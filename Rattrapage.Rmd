@@ -1,0 +1,165 @@
+---
+title: "Analyse et exploration de données de maladies cardiaques"
+output:
+  html_document:
+    df_print: paged
+---
+
+<!-- This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.  -->
+
+<!-- Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*.  -->
+
+Ce jeu de données se penche sur les maladies cardiaques et comprends plusieurs variables en rapport avec cette thématique. La database contenait initialement 76 variables, mais le jeu de données publié lui n'en contient au final que 14.<br/>
+Les variables sont, par ordre d'apparition:
+<br/>  1. Age.
+<br/>  2. Sexe.
+<br/>  3. Type de douleur thoracique.
+<br/>  4. Tension au repos.
+<br/>  5. Cholesterol sanguin (en mg/dl). 
+<br/>  6. Glycémie à jeun (> 120 mg/dl).
+<br/>  7. Résultat de l'ECG au repos.
+<br/>  8. Fréquence cardiaque maximum. 
+<br/>  9. Angine induite à l'effort.
+<br/>  10. Depression du ST induit par l'exercise relativement au repos.
+<br/>  11. Pente du segment ST au pic de l'exercice.
+<br/>  12. Nombre de vaisseaux majeurs coloriés par fluroscopie.
+<br/>  13. Etat de la thalassémie.
+<br/>  14. Diagnostic de thrombose coronaire.
+<br/b> 15. Classe d'age, par tranches de 10 ans.
+
+On va donc s'intéresser aux caractéristiques des différents groupes de patients, et chercher à comprendre comment ces caractéristiques influent sur l'apparition des maladies cardiovasculaires.
+
+#### Chargement des librairies
+```{r, warning=FALSE, message=FALSE}
+library(readr)
+library(plyr)
+library(arules)
+library(tidyverse)
+```
+
+# I) Chargement des données
+```{r, warning=FALSE, message=FALSE}
+data <- read_csv("heart.csv")
+```
+
+#### A) Nettoyage des données
+```{r, warning=FALSE, message=FALSE}
+data$sex = as.factor(data$sex)
+data$sex = revalue(data$sex, c("1"="M", "0"="F"))
+
+data$fbs = as.factor (data$fbs)
+data$fbs = revalue(data$fbs, c("1"="> 120 mg/dl", "0"="<= 120 mg/dl"))
+
+data$exang = as.logical(data$exang)
+colnames(data)[colnames(data)=="exang"] <- "ex_angina"
+
+data$age_class = discretize(data$age, method = "fixed", breaks = 7, categories = c(20,30,40,50,60,70,80))
+
+data$cp = as.factor(data$cp)
+data$cp = revalue(data$cp, c("1" = "typical angina", "2" = "atypical angina", "3" = "non-anginal pain", "0" = "asymptomatic"))
+colnames(data)[colnames(data)=="cp"] <- "chest_pain"
+
+colnames(data)[colnames(data)=="trestbps"] <- "resting_bp"
+
+data$restecg = as.factor(data$restecg)
+data$restecg = revalue(data$restecg, c("0"="normal", "1"="ST-T wave abnormality", "2"="left ventricular hypertrophy"))
+colnames(data)[colnames(data)=="restecg"] <- "resting_ecg"
+
+colnames(data)[colnames(data)=="thalach"] <- "max_bpm"
+
+colnames(data)[colnames(data)=="oldpeak"] <- "st_depression"
+
+data$ca = as.factor(data$ca)
+colnames(data)[colnames(data)=="ca"] <- "colorised_vessels"
+
+data$thal = as.factor(data$thal)
+colnames(data)[colnames(data)=="thal"] <- "thal"
+
+data$slope = as.factor(data$slope)
+data$slope = revalue(data$slope, c("0"="upsloping", "1"="flat", "2"="downsloping"))
+colnames(data)[colnames(data)=="slop"] <- "st_slope"
+
+data$target = as.logical(data$target)
+colnames(data)[colnames(data)=="target"] <- "angiographic_disease"
+
+data$thal = as.factor(data$thal)
+data$thal = revalue(data$thal, c("0"="unknown", "1"="normal", "2"="fixed defect", "3"="reversable defect"))
+colnames(data)[colnames(data)=="thal"] <- "thalassemia"
+```
+
+#### B) Aperçu du jeu de données
+```{r}
+head(data)
+```
+
+#### C) Résumé des données et leur réparttion
+```{r, warning=FALSE, message=FALSE}
+summary(data)
+```
+
+# II) Exploration du jeu de données
+
+#### A) Analyse de la population de l'étude
+
+Le jeu de donnees comporte `r nrow(data)` patients, dont `r data %>% filter(data$sex == "M") %>% nrow` hommes et `r data %>% filter(data$sex == "F") %>% nrow` femmes.
+```{r}
+ggplot(data = data)+
+  geom_bar(aes(x = sex, fill = sex), position = "dodge")+
+  geom_text(aes(x = sex, label = scales::percent(..count../sum(..count..))), stat="count",position=position_stack(0.5))+
+  ggtitle("Répartion Homme / Femme du dataset")
+```
+
+La répartition des patients par tranche d'âge est la suivante:
+```{r}
+
+ggplot(data = data)+
+  geom_bar(aes(x = age_class, fill = age_class), position = "dodge")+
+    geom_text(aes(x = age_class, label = scales::percent(..count../sum(..count..))), stat="count",position=position_stack(0.5))+
+  ggtitle("Répartion par tranche d'age du dataset")
+
+```
+<br/>
+On remarque donc qu'on a 2 fois plus d'hommes que de femmes. Afin d'avoir des résultats interprétables il serait donc intéressant de travailler à partir de ratios ou de pourcentage pour chaque sexe. Enfin, plus de 90% des patients ont entre 30 et 70 ans. Il sera donc compliqué d'étendre nos résultats au delà de cette tranche d'âge.
+
+#### B) Répartition des maladies cardiaques dans la population
+```{r}
+
+percentData <- data %>% group_by(sex) %>% count(angiographic_disease) %>%
+    mutate(ratio=scales::percent(n/sum(n)))
+
+ggplot(data,aes(x=sex,fill=angiographic_disease))+
+  geom_bar(position="fill")+
+  geom_text(data=percentData, aes(y=n,label=ratio), position = position_fill(vjust=0.5))+
+    ggtitle("Taux de diagnostic de thrombose coronaire selon le sexe")
+```
+<br/>
+Ainsi on peut remarquer que dans ce jeu de données les femmes ont un risque de diagnostic de thrombose coronaire positif supérieur de 30% par rapport aux hommes.
+```{r}
+ggplot(data = data)+
+  geom_bar(aes(x= age_class, fill = angiographic_disease), position = "dodge")
+
+ggplot(data = data)+
+  geom_jitter(aes(x=age_class, y = sex, color = angiographic_disease))
+
+Fcardiac <- 100*as.numeric(data %>% filter(angiographic_disease == TRUE,
+                                       sex == "F") %>% 
+                         summarise(angiographic_disease = sum(angiographic_disease)))/96
+
+Hcardiac <- 100*as.numeric(data %>% filter(angiographic_disease == TRUE,
+                                       sex == "M") %>% 
+                         summarise(angiographic_disease = sum(angiographic_disease)))/96
+```
+
+Plus forte prévalence des maladies cardiaques chez les hommes puisqu'on est 96.875% alors que chez la femme on est à 75%.
+La classe d'âge la plus touchée est celle des 50-60 ans, tout sexe confondu.
+
+#Douleurs thoraciques en fonction de la maladie cardiaque
+
+
+
+<!-- Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*. -->
+
+<!-- When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).  -->
+
+<!-- The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed. -->
+
