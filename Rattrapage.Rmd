@@ -8,7 +8,7 @@ output:
 <!-- This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.  -->
 
 <!-- Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*.  -->
-
+test
 Ce jeu de données se penche sur les maladies cardiaques et comprends plusieurs variables en rapport avec cette thématique. La database contenait initialement 76 variables, mais le jeu de données publié lui n'en contient au final que 14.<br/>
 Les variables sont, par ordre d'apparition:
 <br/>  1. Age.
