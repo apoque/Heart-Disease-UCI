@@ -28,8 +28,7 @@ Les variables sont, par ordre d'apparition:
 <br/b>
 Nous allons donc nous intéresser aux caractéristiques des différents groupes de patients, et chercher à comprendre comment ces caractéristiques influent sur l'apparition des maladies cardiovasculaires.
 
-#### Chargement des librairies
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 library(readr)
 library(plyr)
 library(arules)
@@ -38,20 +37,15 @@ library(ggplot2)
 ```
 
 # I) Chargement des données
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 data <- read_csv("heart.csv")
 ```
-# Corrélation avant nettoyage
 
-```{r}
-library(corrplot)
-
-cor(data, method = c("pearson", "kendall", "spearman")) %>% 
-  corrplot(type="upper", order="hclust", tl.col="black", tl.srt=45)
-
-```
 #### A) Nettoyage des données
-```{r, warning=FALSE, message=FALSE}
+Nous renommons les variables et les rendons plus explicites afin de facilter l'interprétation de nos futurs résultats.
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+tmp <- data
+
 data$sex = as.factor(data$sex)
 data$sex = revalue(data$sex, c("1"="M", "0"="F"))
 
@@ -60,48 +54,55 @@ data$fbs = revalue(data$fbs, c("1"="> 120 mg/dl", "0"="<= 120 mg/dl"))
 
 data$exang = as.logical(data$exang)
 colnames(data)[colnames(data)=="exang"] <- "ex_angina"
+colnames(tmp)[colnames(tmp)=="exang"] <- "ex_angina"
 
 data$age_class = discretize(data$age, method = "fixed", breaks = 7, categories = c(25,30, 35,40,45,50,55,60,65,70,75,80))
 
 data$cp = as.factor(data$cp)
 data$cp = revalue(data$cp, c("1" = "typical angina", "2" = "atypical angina", "3" = "non-anginal pain", "0" = "asymptomatic"))
 colnames(data)[colnames(data)=="cp"] <- "chest_pain"
+colnames(tmp)[colnames(tmp)=="cp"] <- "chest_pain"
 
 colnames(data)[colnames(data)=="trestbps"] <- "resting_bpm"
+colnames(tmp)[colnames(tmp)=="trestbps"] <- "resting_bpm"
 
 data$restecg = as.factor(data$restecg)
 data$restecg = revalue(data$restecg, c("0"="normal", "1"="ST-T wave abnormality", "2"="left ventricular hypertrophy"))
 colnames(data)[colnames(data)=="restecg"] <- "resting_ecg"
+colnames(tmp)[colnames(tmp)=="restecg"] <- "resting_ecg"
 
 colnames(data)[colnames(data)=="thalach"] <- "max_bpm"
+colnames(tmp)[colnames(tmp)=="thalach"] <- "max_bpm"
 
 colnames(data)[colnames(data)=="oldpeak"] <- "st_depression"
+colnames(tmp)[colnames(tmp)=="oldpeak"] <- "st_depression"
 
 data$ca = as.factor(data$ca)
 colnames(data)[colnames(data)=="ca"] <- "colorised_vessels"
-
-data$thal = as.factor(data$thal)
-colnames(data)[colnames(data)=="thal"] <- "thal"
+colnames(tmp)[colnames(tmp)=="ca"] <- "colorised_vessels"
 
 data$slope = as.factor(data$slope)
 data$slope = revalue(data$slope, c("0"="upsloping", "1"="flat", "2"="downsloping"))
 colnames(data)[colnames(data)=="slop"] <- "st_slope"
+colnames(tmp)[colnames(tmp)=="slop"] <- "st_slope"
 
 data$target = as.logical(data$target)
 colnames(data)[colnames(data)=="target"] <- "angiographic_disease"
+colnames(tmp)[colnames(tmp)=="target"] <- "angiographic_disease"
 
 data$thal = as.factor(data$thal)
 data$thal = revalue(data$thal, c("0"="unknown", "1"="normal", "2"="fixed defect", "3"="reversable defect"))
 colnames(data)[colnames(data)=="thal"] <- "thalassemia"
+colnames(tmp)[colnames(tmp)=="thal"] <- "thalassemia"
 ```
 
 #### B) Aperçu du jeu de données
-```{r}
+```{r, echo=FALSE}
 head(data)
 ```
 
 #### C) Résumé des données et leur réparttion
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 summary(data)
 ```
 
@@ -110,27 +111,42 @@ summary(data)
 #### A) Analyse de la population de l'étude
 
 Le jeu de données comporte `r nrow(data)` patients, dont `r data %>% filter(data$sex == "M") %>% nrow` hommes et `r data %>% filter(data$sex == "F") %>% nrow` femmes.
-```{r}
+```{r, echo=FALSE}
 ggplot(data = data)+
   geom_bar(aes(x = sex, fill = sex), position = "dodge")+
   geom_text(aes(x = sex, label = scales::percent(..count../sum(..count..))), stat="count",position=position_stack(0.5))+
-  ggtitle("Répartion Homme / Femme du dataset")
+  ggtitle("Répartion Homme / Femme du dataset")+
+  theme_minimal()
 ```
 
 La répartition des patients par tranche d'âge est la suivante:
-```{r}
+```{r, echo=FALSE}
 
 ggplot(data = data)+
   geom_bar(aes(x = age_class, fill = age_class), position = "dodge")+
     geom_text(aes(x = age_class, label = scales::percent(..count../sum(..count..))), stat="count",position=position_stack(0.5))+
-  ggtitle("Répartion par tranche d'age du dataset")
-
+  ggtitle("Répartion par tranche d'age du dataset")+
+  theme_minimal()
 ```
 <br/>
 Nous remarquons donc qu'il y a 2 fois plus d'hommes que de femmes. Afin d'avoir des résultats interprétables il serait donc intéressant de travailler à partir de ratios ou de pourcentage pour chaque sexe. Enfin, plus de 90% des patients ont entre 40 et 70 ans. Il sera donc compliqué d'étendre nos résultats au delà de cette tranche d'âge.
+<br/>
 
-#### B) Répartition des maladies cardiaques dans la population
-```{r}
+#### B) Recherche de corrélations
+
+##### 1) Corrélations générales
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+library(corrplot)
+
+cor(tmp, method = c("pearson", "kendall", "spearman")) %>% 
+  corrplot(type="upper", order="hclust", tl.col="black", tl.srt=45)
+```
+
+##### 2) Sexe
+<br/>
+Ainsi on peut remarquer que dans ce jeu de données les femmes ont un risque de diagnostic de thrombose coronaire positif supérieur de 30% par rapport aux hommes.
+<br/>
+```{r, echo=FALSE}
 
 percentData <- data %>% group_by(sex) %>% count(angiographic_disease) %>%
     mutate(ratio=scales::percent(n/sum(n)))
@@ -138,51 +154,64 @@ percentData <- data %>% group_by(sex) %>% count(angiographic_disease) %>%
 ggplot(data,aes(x=sex,fill=angiographic_disease))+
   geom_bar(position="fill")+
   geom_text(data=percentData, aes(y=n,label=ratio), position = position_fill(vjust=0.5))+
-    ggtitle("Taux de diagnostic de thrombose coronaire selon le sexe")
+    ggtitle("Taux de diagnostic de thrombose coronaire selon le sexe")+
+  theme_minimal()
 ```
-<br/>
-Ainsi on peut remarquer que dans ce jeu de données les femmes ont un risque de diagnostic de thrombose coronaire positif supérieur de 30% par rapport aux hommes.
 
-```{r}
+##### 3) Age
+<br/>
+On remarque aussi que plus l'âge augmente, plus le taux de diagnostic de thrombose coronaire positif semble diminuer Comme vu précédement, on ne prend pas en compte les tranches [20-40] et [70-80] du fait de leur faible effectif dans cette remarque.
+<br/>
+```{r, echo=FALSE}
 percentDataBis <- data %>% group_by(age_class) %>% count(angiographic_disease) %>%
     mutate(ratio=scales::percent(n/sum(n)))
 
 ggplot(data,aes(x=age_class,fill=angiographic_disease))+
   geom_bar(position="fill")+
   geom_text(data=percentDataBis, aes(y=n,label=ratio), position = position_fill(vjust=0.5))+
-    ggtitle("Taux de diagnostic de thrombose coronaire par tranche d'âge")
+    ggtitle("Taux de diagnostic de thrombose coronaire par tranche d'âge")+
+  theme_minimal()
 ```
-<br/>
-On remarque aussi que plus l'âge augmente, plus le taux de diagnostic de thrombose coronaire positif semble diminuer Comme vu précédement, on ne prend pas en compte les tranches [20-40] et [70-80] du fait de leur faible effectif dans cette remarque.
 
-### C) Recherche de potentiels facteurs de risque
-
+##### 4) Fréquence cardiaque maximale
 <br/>
 On peut ici remarquer qu'avoir une fréquence cardiaque maximale basse semble être un facteur protecteur contre la thrombose coronaire.
-```{r}
+<br/>
+
+```{r, echo=FALSE}
 ggplot(data = data)+
   geom_jitter(aes(x= age, y = max_bpm , color = angiographic_disease))+
-  ggtitle("Diagnostic de thrombose coronaire selon la fréquence cardiaque maximale")
+  ggtitle("Diagnostic de thrombose coronaire selon la fréquence cardiaque maximale")+
+  theme_minimal()
 ```
+
+##### 5) Fréquence cardiaque de repos
 <br/>
 Cependant, la fréquence cardiaque de repos ne semble pas avoir une bonne valeur pronostique.
-
-```{r}
+<br/>
+```{r, echo=FALSE}
 ggplot(data = data)+
   geom_jitter(aes(x= age, y = resting_bpm , color = angiographic_disease))+
-  ggtitle("Diagnostic de thrombose coronaire selon la fréquence cardiaque de repos")
-```
-<br/>
-De même, le taux de cholestérol ne semble pas être corrélé au diagnostic de thrombose coronaire. Ce résultat paraît surprenant car le cholestérol est souvent cité comme facteur de risque dans les maladies cardiovasculaires.
-```{r}
-ggplot(data = data)+
-  geom_jitter(aes(x= age, y = chol, color = angiographic_disease))+
-  ggtitle("Diagnostic de thrombose coronaire selon le taux de cholestérol")
+  ggtitle("Diagnostic de thrombose coronaire selon la fréquence cardiaque de repos")+
+  theme_minimal()
 ```
 
+##### 6) Cholestérol
 <br/>
-La présence de douleur thoracique, peu importe le type, semble hautement liée au diagnostic de thrombose coronaire.
-```{r}
+De même, le taux de cholestérol ne semble pas être corrélé au diagnostic de thrombose coronaire. Ce résultat paraît surprenant car le cholestérol est souvent cité comme facteur de risque dans les maladies cardiovasculaires.
+<br/>
+```{r, echo=FALSE}
+ggplot(data = data)+
+  geom_jitter(aes(x= age, y = chol, color = angiographic_disease))+
+  ggtitle("Diagnostic de thrombose coronaire selon le taux de cholestérol")+
+  theme_minimal()
+```
+
+##### 7) Douleur thoracique
+<br/>
+Nous regroupons ici l'ensemble des douleurs thoraciques symptomatiques, cela comprend les angines typiques, atypiques et les douleurs non-angineuse. La présence de douleur thoracique, peu importe le type, semble hautement liée au diagnostic de thrombose coronaire.
+<br/>
+```{r, echo=FALSE}
 tmp <- data
 tmp$chest_pain.reg <- as.character(tmp$chest_pain)
 tmp$chest_pain.reg[tmp$chest_pain %in% c("typical angina", "atypical angina", "non-anginal pain")] <- "symptomatic"
@@ -195,24 +224,32 @@ ggplot(tmp,aes(x=chest_pain.reg,fill=angiographic_disease))+
   geom_bar(position="fill")+
   geom_text(data=percentDataTer, aes(y=n,label=ratio), position = position_fill(vjust=0.5))+
     ggtitle("Taux de diagnostic de thrombose coronaire selon la présence de douleurs thoraciques")+
-  xlab("chest pain")
+  xlab("chest pain")+
+  theme_minimal()
 ```
 
+##### 8) Thalassémie
 <br/>
 Ici aussi, il semble que le fait d'être atteint d'une thalassémie irreversible semble lié à la présence d'une maladie coronarienne.
-```{r}
+<br/>
+```{r, echo=FALSE}
 ggplot(data,aes(x=thalassemia,fill=angiographic_disease))+
   geom_bar(position="fill")+
   geom_text(aes(label=..count..),stat='count',position=position_fill(vjust=0.5))+
-  ggtitle("Taux de diagnostic de thrombose coronaire selon l'état de la thalassémie")
+  ggtitle("Taux de diagnostic de thrombose coronaire selon l'état de la thalassémie")+
+  theme_minimal()
 ```
 
+##### 9) Vaisseaux colorés
+<br/>
 On remarque ici logiquement que plus il y a de vaisseaux colorés par le produit de contraste, moins il y a de thrombose coronaire. En effet, mieux le coeur est perfusé, moins on risque de trouver de maladie cardiovasculaire. On note cependant que cette relation n'est pas vérifiée quand 4 vaisseaux prennent le contraste, mais il est possible d'imputer cette exception sur la faible taille de cette catégorie (n=5) qu'on ne considère alors plus comme significative. Une relation dose-effet est aussi observable.
-```{r}
+<br/>
+```{r, echo=FALSE}
 ggplot(data,aes(x=colorised_vessels,fill=angiographic_disease))+
   geom_bar(position="fill")+
   geom_text(aes(label=..count..),stat='count',position=position_fill(vjust=0.5))+
-    ggtitle("Taux de diagnostic de thrombose coronaire selon le nombre de vaisseaux colorés")
+  ggtitle("Taux de diagnostic de thrombose coronaire selon le nombre de vaisseaux colorés")+
+  theme_minimal()
 ```
 
 
