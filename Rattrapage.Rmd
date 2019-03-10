@@ -135,6 +135,11 @@ Nous remarquons donc qu'il y a 2 fois plus d'hommes que de femmes. Afin d'avoir 
 #### B) Recherche de corrélations
 
 ##### 1) Corrélations générales
+<br/>
+Nous essayons par cette estimation des corrélations entre variables avoir une première idée des facteurs qui semblent impacter la survenue, ou l'abscence, de thrombose coronaire. Il semble donc que les variables telles que la glycémie à jeun, le cholestérol, la fréquence cardiaque de repos ou encore les résultats de l'ecg de repos ne soit que très peu correlés avec la survenue de thrombose coronaire. À l'inverse, le nombre de vaisseaux colorés, les douleurs thoraciques, les angines induites à l'effort ou encore la depression du ST semblent avoir une bonne valeur prédictive du diagnostic de thrombose coronaire.
+<br/>
+Par la suite, nous nous pencherons tour à tour sur chaque variables afin de voir dans quelle mesure elle possède, ou non, un interêt dans le diagnostic de thrombose coronaire.
+
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 library(corrplot)
 
@@ -246,13 +251,21 @@ On remarque ici logiquement que plus il y a de vaisseaux colorés par le produit
 <br/>
 ```{r, echo=FALSE}
 ggplot(data,aes(x=colorised_vessels,fill=angiographic_disease))+
-  geom_bar(position="fill")+
+  geom_bar()+
   geom_text(aes(label=..count..),stat='count',position=position_fill(vjust=0.5))+
   ggtitle("Taux de diagnostic de thrombose coronaire selon le nombre de vaisseaux colorés")+
   theme_minimal()
 ```
 
-
+##### 10) Glycémie
+<br/>
+```{r, echo=FALSE}
+ggplot(data,aes(x=fbs,fill=angiographic_disease))+
+  geom_bar(position="fill")+
+  geom_text(aes(label=..count..),stat='count',position=position_fill(vjust=0.5))+
+  ggtitle("Taux de diagnostic de thrombose coronaire selon le nombre de vaisseaux colorés")+
+  theme_minimal()
+```
 
 <!-- Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*. -->
 
