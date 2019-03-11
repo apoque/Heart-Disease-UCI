@@ -34,6 +34,11 @@ library(plyr)
 library(arules)
 library(tidyverse)
 library(ggplot2)
+library(epiR)
+library(DescTools)
+library(corrplot)
+library(FactoMineR)
+library(factoextra)
 ```
 
 # I) Chargement des données
@@ -97,7 +102,7 @@ colnames(tmp)[colnames(tmp)=="thal"] <- "thalassemia"
 ```
 
 #### B) Aperçu du jeu de données
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 head(data)
 ```
 
@@ -111,7 +116,7 @@ summary(data)
 #### A) Analyse de la population de l'étude
 
 Le jeu de données comporte `r nrow(data)` patients, dont `r data %>% filter(data$sex == "M") %>% nrow` hommes et `r data %>% filter(data$sex == "F") %>% nrow` femmes.
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data = data)+
   geom_bar(aes(x = sex, fill = sex), position = "dodge")+
   geom_text(aes(x = sex, label = scales::percent(..count../sum(..count..))), stat="count",position=position_stack(0.5))+
@@ -120,7 +125,7 @@ ggplot(data = data)+
 ```
 
 La répartition des patients par tranche d'âge est la suivante:
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 
 ggplot(data = data)+
   geom_bar(aes(x = age_class, fill = age_class), position = "dodge")+
@@ -141,8 +146,6 @@ Nous essayons par cette estimation des corrélations entre variables avoir une p
 Par la suite, nous nous pencherons tour à tour sur chaque variables afin de voir dans quelle mesure elle possède, ou non, un interêt dans le diagnostic de thrombose coronaire.
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
-library(corrplot)
-
 cor(tmp, method = c("pearson", "kendall", "spearman")) %>% 
   corrplot(type="upper", order="hclust", tl.col="black", tl.srt=45)
 ```
@@ -151,7 +154,7 @@ cor(tmp, method = c("pearson", "kendall", "spearman")) %>%
 <br/>
 Ainsi on peut remarquer que dans ce jeu de données les femmes ont un risque de diagnostic de thrombose coronaire positif supérieur de 30% par rapport aux hommes.
 <br/>
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 
 percentData <- data %>% group_by(sex) %>% count(angiographic_disease) %>%
     mutate(ratio=scales::percent(n/sum(n)))
@@ -161,13 +164,20 @@ ggplot(data,aes(x=sex,fill=angiographic_disease))+
   geom_text(data=percentData, aes(y=n,label=ratio), position = position_fill(vjust=0.5))+
     ggtitle("Taux de diagnostic de thrombose coronaire selon le sexe")+
   theme_minimal()
+
+#Test + == Femme
+#Outcome + == checked
+data[,c("sex", "angiographic_disease")] -> df
+Rev(table(df), margin=2) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
 ```
 
 ##### 3) Age
 <br/>
-On remarque aussi que plus l'âge augmente, plus le taux de diagnostic de thrombose coronaire positif semble diminuer Comme vu précédement, on ne prend pas en compte les tranches [20-40] et [70-80] du fait de leur faible effectif dans cette remarque.
+On remarque aussi que plus l'âge augmente, plus le taux de diagnostic de thrombose coronaire positif semble diminuer Comme vu précédement, on ne prend pas en compte, dans cette remarque, les tranches [20-40] et [70-80] du fait de leur faible effectif.
 <br/>
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 percentDataBis <- data %>% group_by(age_class) %>% count(angiographic_disease) %>%
     mutate(ratio=scales::percent(n/sum(n)))
 
@@ -176,6 +186,15 @@ ggplot(data,aes(x=age_class,fill=angiographic_disease))+
   geom_text(data=percentDataBis, aes(y=n,label=ratio), position = position_fill(vjust=0.5))+
     ggtitle("Taux de diagnostic de thrombose coronaire par tranche d'âge")+
   theme_minimal()
+
+#Test + == [55,80]
+#Outcome + == checked
+data$age_class_bis = discretize(data$age, method = "fixed", breaks = 3, categories = c(0,55,80))
+
+data[,c("age_class_bis", "angiographic_disease")] -> df
+Rev(table(df)) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
 ```
 
 ##### 4) Fréquence cardiaque maximale
@@ -183,88 +202,201 @@ ggplot(data,aes(x=age_class,fill=angiographic_disease))+
 On peut ici remarquer qu'avoir une fréquence cardiaque maximale basse semble être un facteur protecteur contre la thrombose coronaire.
 <br/>
 
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data = data)+
   geom_jitter(aes(x= age, y = max_bpm , color = angiographic_disease))+
   ggtitle("Diagnostic de thrombose coronaire selon la fréquence cardiaque maximale")+
   theme_minimal()
+
+#Test + == [150,205]
+#Outcome + == checked
+data$max_bpm_bis = discretize(data$max_bpm, method = "fixed", breaks = 3, categories = c(0,150,205))
+
+data[,c("max_bpm_bis", "angiographic_disease")] -> df
+Rev(table(df)) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
 ```
 
 ##### 5) Fréquence cardiaque de repos
 <br/>
 Cependant, la fréquence cardiaque de repos ne semble pas avoir une bonne valeur pronostique.
 <br/>
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data = data)+
   geom_jitter(aes(x= age, y = resting_bpm , color = angiographic_disease))+
   ggtitle("Diagnostic de thrombose coronaire selon la fréquence cardiaque de repos")+
   theme_minimal()
+
+
+#Test + == [120,205]
+#Outcome + == checked
+data$resting_bpm_bis = discretize(data$resting_bpm, method = "fixed", breaks = 3, categories = c(0,120,205))
+
+data[,c("resting_bpm_bis", "angiographic_disease")] -> df
+Rev(table(df)) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
 ```
 
 ##### 6) Cholestérol
 <br/>
 De même, le taux de cholestérol ne semble pas être corrélé au diagnostic de thrombose coronaire. Ce résultat paraît surprenant car le cholestérol est souvent cité comme facteur de risque dans les maladies cardiovasculaires.
 <br/>
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data = data)+
   geom_jitter(aes(x= age, y = chol, color = angiographic_disease))+
   ggtitle("Diagnostic de thrombose coronaire selon le taux de cholestérol")+
   theme_minimal()
+
+
+#Test + == [250,600]
+#Outcome + == checked
+data$chol_bis = discretize(data$chol, method = "fixed", breaks = 3, categories = c(0,250,600))
+
+data[,c("chol_bis", "angiographic_disease")] -> df
+Rev(table(df)) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
 ```
 
 ##### 7) Douleur thoracique
 <br/>
 Nous regroupons ici l'ensemble des douleurs thoraciques symptomatiques, cela comprend les angines typiques, atypiques et les douleurs non-angineuse. La présence de douleur thoracique, peu importe le type, semble hautement liée au diagnostic de thrombose coronaire.
 <br/>
-```{r, echo=FALSE}
-tmp <- data
-tmp$chest_pain.reg <- as.character(tmp$chest_pain)
-tmp$chest_pain.reg[tmp$chest_pain %in% c("typical angina", "atypical angina", "non-anginal pain")] <- "symptomatic"
-table(tmp$chest_pain.reg)
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+tmpBis <- data
+tmpBis$chest_pain.reg <- as.character(tmpBis$chest_pain)
+tmpBis$chest_pain.reg[tmpBis$chest_pain %in% c("typical angina", "atypical angina", "non-anginal pain")] <- "symptomatic"
+table(tmpBis$chest_pain.reg)
 
-percentDataTer <- tmp %>% group_by(chest_pain.reg) %>% count(angiographic_disease) %>%
+percentDataTer <- tmpBis %>% group_by(chest_pain.reg) %>% count(angiographic_disease) %>%
     mutate(ratio=scales::percent(n/sum(n)))
 
-ggplot(tmp,aes(x=chest_pain.reg,fill=angiographic_disease))+
+ggplot(tmpBis,aes(x=chest_pain.reg,fill=angiographic_disease))+
   geom_bar(position="fill")+
   geom_text(data=percentDataTer, aes(y=n,label=ratio), position = position_fill(vjust=0.5))+
     ggtitle("Taux de diagnostic de thrombose coronaire selon la présence de douleurs thoraciques")+
   xlab("chest pain")+
   theme_minimal()
+
+#Test + == symptomatic
+#Outcome + == checked
+tmpBis[,c("chest_pain.reg", "angiographic_disease")] -> df
+Rev(table(df)) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
 ```
 
 ##### 8) Thalassémie
 <br/>
 Ici aussi, il semble que le fait d'être atteint d'une thalassémie irreversible semble lié à la présence d'une maladie coronarienne.
 <br/>
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=thalassemia,fill=angiographic_disease))+
-  geom_bar(position="fill")+
-  geom_text(aes(label=..count..),stat='count',position=position_fill(vjust=0.5))+
+  geom_bar()+
+  geom_text(aes(label=..count..),stat='count')+
   ggtitle("Taux de diagnostic de thrombose coronaire selon l'état de la thalassémie")+
   theme_minimal()
+
+#Test + == fixed defect
+#Outcome + == checked
+tmpBis$thalassemia.reg <- as.character(tmpBis$thalassemia)
+tmpBis$thalassemia.reg[tmpBis$thalassemia %in% c("unknown", "normal", "reversable defect")] <- "non-fixed defect"
+
+tmpBis[,c("thalassemia.reg", "angiographic_disease")] -> df
+Rev(table(df), margin=2) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
 ```
 
 ##### 9) Vaisseaux colorés
 <br/>
 On remarque ici logiquement que plus il y a de vaisseaux colorés par le produit de contraste, moins il y a de thrombose coronaire. En effet, mieux le coeur est perfusé, moins on risque de trouver de maladie cardiovasculaire. On note cependant que cette relation n'est pas vérifiée quand 4 vaisseaux prennent le contraste, mais il est possible d'imputer cette exception sur la faible taille de cette catégorie (n=5) qu'on ne considère alors plus comme significative. Une relation dose-effet est aussi observable.
 <br/>
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=colorised_vessels,fill=angiographic_disease))+
   geom_bar()+
-  geom_text(aes(label=..count..),stat='count',position=position_fill(vjust=0.5))+
+  geom_text(aes(label=..count..),stat='count')+
   ggtitle("Taux de diagnostic de thrombose coronaire selon le nombre de vaisseaux colorés")+
   theme_minimal()
+
+#Test + ==  [0-1]
+#Outcome + == checked
+tmpBis$vessels.reg <- as.character(tmpBis$colorised_vessels)
+tmpBis$vessels.reg[tmpBis$colorised_vessels %in% c("0", "1")] <- "[0-1]"
+tmpBis$vessels.reg[tmpBis$colorised_vessels %in% c("2", "3", "4")] <- "[2-4]"
+
+tmpBis[,c("vessels.reg", "angiographic_disease")] -> df
+Rev(table(df), margin=2) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
 ```
 
-##### 10) Glycémie
+##### 10) Glycémie à jeun
 <br/>
-```{r, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=fbs,fill=angiographic_disease))+
   geom_bar(position="fill")+
   geom_text(aes(label=..count..),stat='count',position=position_fill(vjust=0.5))+
-  ggtitle("Taux de diagnostic de thrombose coronaire selon le nombre de vaisseaux colorés")+
+  ggtitle("Taux de diagnostic de thrombose coronaire selon la glycémie à jeun")+
   theme_minimal()
+
+#Test + ==  <= 120 mg/dl
+#Outcome + == checked
+tmpBis[,c("fbs", "angiographic_disease")] -> df
+Rev(table(df), margin=2) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
+```
+
+#### C) Création d'un test de score
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+# tmpBis[,c("sex", "fbs", "age_class_bis", "max_bpm_bis", "resting_bpm_bis", "chol_bis", "chest_pain.reg", "thalassemia.reg", "vessels.reg", "angiographic_disease")] -> finalTab
+tmpBis$age <- NULL
+tmpBis$chest_pain <- NULL
+tmpBis$resting_bpm <- NULL
+tmpBis$chol <- NULL
+tmpBis$resting_ecg <- NULL
+tmpBis$max_bpm <- NULL
+tmpBis$ex_angina <- NULL
+tmpBis$slope <- NULL
+tmpBis$st_depression <- NULL
+tmpBis$colorised_vessels <- NULL
+tmpBis$thalassemia <- NULL
+tmpBis$age_class <- NULL
+
+as.factor(tmpBis$chest_pain.reg) ->tmpBis$chest_pain.reg
+as.factor(tmpBis$thalassemia.reg) ->tmpBis$thalassemia.reg
+as.factor(tmpBis$vessels.reg) ->tmpBis$vessels.reg
+
+finalTab <- NULL
+finalTab <- data.frame()
+j <- 1
+while (j <= ncol(tmpBis)){
+  i <- 1
+  colnames(tmpBis[,colnames(tmpBis)[j]]) -> colname
+  if (colname != "angiographic_disease"){
+    while (i <= 2){
+      unlist(unique(tmpBis[,colnames(tmpBis)[j]])) -> names
+      finalTab[paste(colname,as.character(names[i])), "malade"] <- count(filter(tmpBis, get(colname) == as.character(names[i]) & angiographic_disease == TRUE))
+      finalTab[paste(colname,as.character(names[i])), "non malade"] <- count(filter(tmpBis, get(colname) == as.character(names[i]) & angiographic_disease == FALSE))
+      i <- i + 1
+    }
+  }
+  j <- j + 1
+}
+
+
+res.pca <- PCA(finalTab, graph = FALSE)
+print(res.pca)
+ind <- get_pca_ind(res.pca)
+ind
+fviz_pca_biplot (res.pca, col.ind = "y",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Avoid text overlapping (slow if many points)
+             )
+
 ```
 
 <!-- Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*. -->
