@@ -24,7 +24,6 @@ Les variables sont, par ordre d'apparition:
 <br/>  12. Nombre de vaisseaux majeurs coloriés par fluroscopie.
 <br/>  13. Etat de la thalassémie.
 <br/>  14. Diagnostic de thrombose coronaire. Il est positif lors d'un rétrécissement d'un vaisseau majeur supérieur à 50%.
-<br/b> 15. Classe d'age, par tranches de 5 ans.
 <br/b>
 Nous allons donc nous intéresser aux caractéristiques des différents groupes de patients, et chercher à comprendre comment ces caractéristiques influent sur l'apparition des maladies cardiovasculaires.
 
@@ -60,7 +59,6 @@ data$fbs = revalue(data$fbs, c("1"="> 120 mg/dl", "0"="<= 120 mg/dl"))
 data$exang = as.logical(data$exang)
 colnames(data)[colnames(data)=="exang"] <- "ex_angina"
 colnames(tmp)[colnames(tmp)=="exang"] <- "ex_angina"
-
 data$age_class = discretize(data$age, method = "fixed", breaks = 7, categories = c(25,30, 35,40,45,50,55,60,65,70,75,80))
 
 data$cp = as.factor(data$cp)
@@ -199,12 +197,12 @@ epi.tests(tb, conf.level = 0.95)
 
 ##### 4) Fréquence cardiaque maximale
 <br/>
-On peut ici remarquer qu'avoir une fréquence cardiaque maximale basse semble être un facteur protecteur contre la thrombose coronaire.
+On peut ici remarquer qu'avoir une fréquence cardiaque haute basse semble être un facteur de risque de thrombose coronaire.
 <br/>
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data = data)+
-  geom_jitter(aes(x= age, y = max_bpm , color = angiographic_disease))+
+  geom_jitter(aes(x= angiographic_disease, y = max_bpm , color = angiographic_disease))+
   ggtitle("Diagnostic de thrombose coronaire selon la fréquence cardiaque maximale")+
   theme_minimal()
 
@@ -224,7 +222,7 @@ Cependant, la fréquence cardiaque de repos ne semble pas avoir une bonne valeur
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data = data)+
-  geom_jitter(aes(x= age, y = resting_bpm , color = angiographic_disease))+
+  geom_jitter(aes(x= angiographic_disease, y = resting_bpm , color = angiographic_disease))+
   ggtitle("Diagnostic de thrombose coronaire selon la fréquence cardiaque de repos")+
   theme_minimal()
 
@@ -245,7 +243,7 @@ De même, le taux de cholestérol ne semble pas être corrélé au diagnostic de
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data = data)+
-  geom_jitter(aes(x= age, y = chol, color = angiographic_disease))+
+  geom_jitter(aes(x= angiographic_disease, y = chol, color = angiographic_disease))+
   ggtitle("Diagnostic de thrombose coronaire selon le taux de cholestérol")+
   theme_minimal()
 
@@ -295,7 +293,7 @@ Ici aussi, il semble que le fait d'être atteint d'une thalassémie irreversible
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=thalassemia,fill=angiographic_disease))+
   geom_bar()+
-  geom_text(aes(label=..count..),stat='count')+
+  geom_text(aes(label=..count..),stat='count',position=position_stack(vjust = 0.5))+
   ggtitle("Taux de diagnostic de thrombose coronaire selon l'état de la thalassémie")+
   theme_minimal()
 
@@ -317,7 +315,7 @@ On remarque ici logiquement que plus il y a de vaisseaux colorés par le produit
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=colorised_vessels,fill=angiographic_disease))+
   geom_bar()+
-  geom_text(aes(label=..count..),stat='count')+
+  geom_text(aes(label=..count..),stat='count',position=position_stack(vjust = 0.5))+
   ggtitle("Taux de diagnostic de thrombose coronaire selon le nombre de vaisseaux colorés")+
   theme_minimal()
 
@@ -350,7 +348,92 @@ tb
 epi.tests(tb, conf.level = 0.95)
 ```
 
+##### 11) ECG de repos
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+ggplot(data,aes(x=resting_ecg,fill=angiographic_disease))+
+  geom_bar()+
+  geom_text(aes(label=..count..),stat='count',position=position_stack(vjust = 0.5))+
+  ggtitle("Taux de diagnostic de thrombose coronaire selon l'ECG de repos")+
+  theme_minimal()
+
+#Test + ==  <= anormal
+#Outcome + == checked
+tmpBis$ecg.reg <- as.character(tmpBis$resting_ecg)
+tmpBis$ecg.reg[tmpBis$resting_ecg %in% c("ST-T wave abnormality", "left ventricular hypertrophy")] <- "anormal"
+
+tmpBis[,c("ecg.reg", "angiographic_disease")] -> df
+Rev(table(df), margin=2) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
+```
+
+##### 12) Angine induite à l'effort
+<br/>
+Résultat contre intuitif...
+<br/>
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+ggplot(data,aes(x=ex_angina,fill=angiographic_disease))+
+  geom_bar(position="fill")+
+  geom_text(aes(label=..count..),stat='count',position=position_fill(vjust = 0.5))+
+  ggtitle("Taux de diagnostic de thrombose coronaire selon l'angine d'effort")+
+  theme_minimal()
+
+#Test + ==  <= FALSE
+#Outcome + == checked
+tmpBis$ex_angina.reg <- as.factor(data$ex_angina)
+
+tmpBis[,c("ex_angina.reg", "angiographic_disease")] -> df
+Rev(table(df), margin=2) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
+```
+
+##### 13) Dépression du segement ST induit à l'effort
+<br/>
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+ggplot(data = data)+
+  geom_jitter(aes(x= angiographic_disease, y = st_depression, color = angiographic_disease))+
+  ggtitle("Diagnostic de thrombose coronaire selon la dépression du segement ST")+
+  theme_minimal()
+
+
+#Test + == [0.5-6.5]
+#Outcome + == checked
+tmpBis$st_dep_bis = discretize(data$st_depression, method = "fixed", breaks = 3, categories = c(0,2,6.5))
+
+tmpBis[,c("st_dep_bis", "angiographic_disease")] -> df
+Rev(table(df), margin=2) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
+```
+
+##### 14) Pente du segement ST lors de l'effort
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+ggplot(data,aes(x=slope,fill=angiographic_disease))+
+  geom_bar()+
+  geom_text(aes(label=..count..),stat='count',position=position_stack(vjust = 0.5))+
+  ggtitle("Diagnostic de thrombose coronaire selon la pente du ST")+
+  theme_minimal()
+
+#Test + == fixed defect
+#Outcome + == checked
+tmpBis$slope.reg <-as.character(data$slope)
+tmpBis$slope.reg[tmpBis$slope.reg %in% c("upsloping", "downsloping")] <- "inclined"
+
+tmpBis[,c("slope.reg", "angiographic_disease")] -> df
+Rev(table(df)) -> tb
+tb
+epi.tests(tb, conf.level = 0.95)
+```
+
 #### C) Création d'un test de score
+<br/>
+On retire certaines variables qui n'ont à priori que très peu d'interêt selon nos observations précédentes, afin d'alléger la visualisation.
+<br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 # tmpBis[,c("sex", "fbs", "age_class_bis", "max_bpm_bis", "resting_bpm_bis", "chol_bis", "chest_pain.reg", "thalassemia.reg", "vessels.reg", "angiographic_disease")] -> finalTab
 tmpBis$age <- NULL
@@ -365,10 +448,16 @@ tmpBis$st_depression <- NULL
 tmpBis$colorised_vessels <- NULL
 tmpBis$thalassemia <- NULL
 tmpBis$age_class <- NULL
+tmpBis$resting_ecg <- NULL
+
+tmpBis$chol_bis <- NULL
+tmpBis$fbs <- NULL
+tmpBis$resting_bpm_bis <- NULL
 
 as.factor(tmpBis$chest_pain.reg) ->tmpBis$chest_pain.reg
 as.factor(tmpBis$thalassemia.reg) ->tmpBis$thalassemia.reg
 as.factor(tmpBis$vessels.reg) ->tmpBis$vessels.reg
+as.factor(tmpBis$ecg.reg) ->tmpBis$ecg.reg
 
 finalTab <- NULL
 finalTab <- data.frame()
@@ -386,13 +475,18 @@ while (j <= ncol(tmpBis)){
   }
   j <- j + 1
 }
+```
+<br/>
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 
 
 res.pca <- PCA(finalTab, graph = FALSE)
 print(res.pca)
 ind <- get_pca_ind(res.pca)
 ind
-fviz_pca_biplot (res.pca, col.ind = "y",
+fviz_pca_biplot (res.pca, col.ind = "contrib",
+             geom = c("point", "text"),
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              repel = TRUE # Avoid text overlapping (slow if many points)
              )
