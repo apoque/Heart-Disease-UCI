@@ -432,7 +432,7 @@ epi.tests(tb, conf.level = 0.95)
 
 #### C) Création d'un test de score
 <br/>
-On retire certaines variables qui n'ont à priori que très peu d'interêt selon nos observations précédentes, afin d'alléger la visualisation.
+On retire certaines variables qui n'ont à priori que très peu d'interêt selon nos observations précédentes, afin d'alléger la visualisation. Ainsi on retire le cholestérol, la glycémie à jeun et le fréquence cardiaque au repos.
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 # tmpBis[,c("sex", "fbs", "age_class_bis", "max_bpm_bis", "resting_bpm_bis", "chol_bis", "chest_pain.reg", "thalassemia.reg", "vessels.reg", "angiographic_disease")] -> finalTab
