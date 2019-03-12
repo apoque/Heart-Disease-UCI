@@ -316,14 +316,14 @@ On remarque ici logiquement que plus il y a de vaisseaux colorés par le produit
 ggplot(data,aes(x=colorised_vessels,fill=angiographic_disease))+
   geom_bar()+
   geom_text(aes(label=..count..),stat='count',position=position_stack(vjust = 0.5))+
-  ggtitle("Taux de diagnostic de thrombose coronaire selon le nombre de vaisseaux colorés")+
+  ggtitle("Diagnostic de thrombose coronaire selon le nombre de vaisseaux colorés")+
   theme_minimal()
 
 #Test + ==  [0-1]
 #Outcome + == checked
 tmpBis$vessels.reg <- as.character(tmpBis$colorised_vessels)
-tmpBis$vessels.reg[tmpBis$colorised_vessels %in% c("0", "1")] <- "[0-1]"
-tmpBis$vessels.reg[tmpBis$colorised_vessels %in% c("2", "3", "4")] <- "[2-4]"
+tmpBis$vessels.reg[tmpBis$vessels.reg %in% c("0", "1")] <- "[0-1]"
+tmpBis$vessels.reg[tmpBis$vessels.reg %in% c("2", "3", "4")] <- "[2-4]"
 
 tmpBis[,c("vessels.reg", "angiographic_disease")] -> df
 Rev(table(df), margin=2) -> tb
@@ -332,6 +332,8 @@ epi.tests(tb, conf.level = 0.95)
 ```
 
 ##### 10) Glycémie à jeun
+<br/>
+Comme vu dans le graphique de corrélation général, la glycémie à jeun ne semble pas du tout corrélée avec le diagnostic de thrombose coronaire.
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=fbs,fill=angiographic_disease))+
@@ -349,6 +351,8 @@ epi.tests(tb, conf.level = 0.95)
 ```
 
 ##### 11) ECG de repos
+<br/>
+On observe qu'il y a moins de thrombose coronaire chez les patients avec un ECG normal, mais la différence ne semble pas très significative.
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=resting_ecg,fill=angiographic_disease))+
@@ -370,7 +374,8 @@ epi.tests(tb, conf.level = 0.95)
 
 ##### 12) Angine induite à l'effort
 <br/>
-Résultat contre intuitif...
+Il semblerait que les patients atteints de thrombose coronaire aient moins de douleure angineuse à l'effort.
+Ce résultat semble contre-intuitif, mais il pourrait permettre de faire un diagnostic différentiel avec une d'autres maladies cardiovasculaires.
 <br/>
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
@@ -392,7 +397,8 @@ epi.tests(tb, conf.level = 0.95)
 
 ##### 13) Dépression du segement ST induit à l'effort
 <br/>
-
+On constate que très peu de patient atteint de thrombose coronaire ont une dépression du segment ST supérieure à 2 lors d'un effort.
+<br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data = data)+
   geom_jitter(aes(x= angiographic_disease, y = st_depression, color = angiographic_disease))+
@@ -400,7 +406,7 @@ ggplot(data = data)+
   theme_minimal()
 
 
-#Test + == [0.5-6.5]
+#Test + == [2-6.5]
 #Outcome + == checked
 tmpBis$st_dep_bis = discretize(data$st_depression, method = "fixed", breaks = 3, categories = c(0,2,6.5))
 
@@ -411,6 +417,8 @@ epi.tests(tb, conf.level = 0.95)
 ```
 
 ##### 14) Pente du segement ST lors de l'effort
+<br/>
+Il semblerai qu'avoir une pente de son segment ST lors d'un effort (qu'elle soit positive ou négative) semble être associé avec une thrombose coronaire.
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=slope,fill=angiographic_disease))+
@@ -429,8 +437,8 @@ Rev(table(df)) -> tb
 tb
 epi.tests(tb, conf.level = 0.95)
 ```
+#### B) Premiers pas vers un questionnaire diagnostic
 
-#### C) Création d'un test de score
 <br/>
 On retire certaines variables qui n'ont à priori que très peu d'interêt selon nos observations précédentes, afin d'alléger la visualisation. Ainsi on retire le cholestérol, la glycémie à jeun et le fréquence cardiaque au repos.
 <br/>
@@ -454,10 +462,24 @@ tmpBis$chol_bis <- NULL
 tmpBis$fbs <- NULL
 tmpBis$resting_bpm_bis <- NULL
 
-as.factor(tmpBis$chest_pain.reg) ->tmpBis$chest_pain.reg
-as.factor(tmpBis$thalassemia.reg) ->tmpBis$thalassemia.reg
-as.factor(tmpBis$vessels.reg) ->tmpBis$vessels.reg
-as.factor(tmpBis$ecg.reg) ->tmpBis$ecg.reg
+as.factor(tmpBis$chest_pain.reg) ->tmpBis$chest_pain
+tmpBis$chest_pain.reg <- NULL
+as.factor(tmpBis$thalassemia.reg) ->tmpBis$thalassemia
+tmpBis$thalassemia.reg <- NULL
+as.factor(tmpBis$vessels.reg) ->tmpBis$vessels
+tmpBis$vessels.reg <- NULL
+as.factor(tmpBis$ecg.reg) ->tmpBis$ecg
+tmpBis$ecg.reg <- NULL
+tmpBis$age_class_bis -> tmpBis$age_class
+tmpBis$age_class_bis <- NULL
+tmpBis$max_bpm_bis -> tmpBis$max_bpm
+tmpBis$max_bpm_bis <- NULL
+tmpBis$ex_angina.reg -> tmpBis$ex_angina
+tmpBis$ex_angina.reg <- NULL
+tmpBis$st_dep_bis -> tmpBis$st_dep
+tmpBis$st_dep_bis <- NULL
+tmpBis$slope.reg -> tmpBis$slope
+tmpBis$slope.reg <- NULL
 
 finalTab <- NULL
 finalTab <- data.frame()
@@ -490,6 +512,31 @@ fviz_pca_biplot (res.pca, col.ind = "contrib",
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              repel = TRUE # Avoid text overlapping (slow if many points)
              )
+```
+#### C) Applicable tout de suite à la clinique
+<br/>
+Il semblerai donc qu'en demandant au patient de faire une épreuve de test on puisse déjà avoir une bonne idée de la présence ou non de thrombose coronaire.
+On considère qu'il est à risque si sa dépression du segment ST est comprise  entre 0 et 2, qu'il n'a pas de douleur angineuse à l'effort mais qu'il à une douleur thoracique symptomatique au repos.
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+
+
+ggplot(data, aes(x = ex_angina, y = st_depression, color = tmpBis$chest_pain)) +
+  geom_point() +
+  geom_jitter()+
+  facet_grid(~angiographic_disease)
+
+data %>% filter(ex_angina == FALSE & st_depression <= 2 & tmpBis$chest_pain == "symptomatic") -> oui
+data %>% filter(ex_angina == TRUE | st_depression > 2 | tmpBis$chest_pain == "asymptomatic") -> non
+
+oui %>% filter(angiographic_disease == TRUE) %>% nrow() -> test_plus_disease_plus
+oui %>% filter(angiographic_disease == FALSE) %>% nrow() -> test_plus_disease_minus
+non %>% filter(angiographic_disease == TRUE) %>% nrow() -> test_minus_disease_plus
+non %>% filter(angiographic_disease == FALSE) %>% nrow() -> test_minus_disease_minus
+
+contingence <- data_frame(disease_plus=c(test_plus_disease_plus, test_minus_disease_plus), disease_minus=c(test_plus_disease_minus, test_minus_disease_minus))
+contingence
+epi.tests(as.matrix(contingence), conf.level = 0.95)
 
 ```
 
