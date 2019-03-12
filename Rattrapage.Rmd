@@ -139,18 +139,21 @@ Nous remarquons donc qu'il y a 2 fois plus d'hommes que de femmes. Afin d'avoir 
 
 ##### 1) Corrélations générales
 <br/>
-Nous essayons par cette estimation des corrélations entre variables avoir une première idée des facteurs qui semblent impacter la survenue, ou l'abscence, de thrombose coronaire. Il semble donc que les variables telles que la glycémie à jeun, le cholestérol, la fréquence cardiaque de repos ou encore les résultats de l'ecg de repos ne soit que très peu correlés avec la survenue de thrombose coronaire. À l'inverse, le nombre de vaisseaux colorés, les douleurs thoraciques, les angines induites à l'effort ou encore la depression du ST semblent avoir une bonne valeur prédictive du diagnostic de thrombose coronaire.
+Nous essayons par cette estimation des corrélations entre variables d'avoir une première idée des facteurs qui semblent impacter la survenue, ou l'abscence, de thrombose coronaire. Il semble donc que les variables telles que la glycémie à jeun, le cholestérol, la fréquence cardiaque de repos ou encore les résultats de l'ecg de repos ne soient que très peu correlées avec la survenue de thrombose coronaire. 
+<br/>
+À l'inverse, le nombre de vaisseaux colorés, les douleurs thoraciques, les angines induites à l'effort ou encore la dépression du ST semblent avoir une bonne valeur prédictive du diagnostic de thrombose coronaire.
 <br/>
 Par la suite, nous nous pencherons tour à tour sur chaque variables afin de voir dans quelle mesure elle possède, ou non, un interêt dans le diagnostic de thrombose coronaire.
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 cor(tmp, method = c("pearson", "kendall", "spearman")) %>% 
-  corrplot(type="upper", order="hclust", tl.col="black", tl.srt=45)
+  corrplot(type="upper", order="hclust", tl.col="black", tl.srt=45, title = "Estimation des corrélations entre variables")
+
 ```
 
 ##### 2) Sexe
 <br/>
-Ainsi on peut remarquer que dans ce jeu de données les femmes ont un risque de diagnostic de thrombose coronaire positif supérieur de 30% par rapport aux hommes.
+Ainsi on peut remarquer que dans ce jeu de données les femmes ont un risque de diagnostic de thrombose coronaire positif supérieur par rapport aux hommes.
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 
@@ -162,6 +165,11 @@ ggplot(data,aes(x=sex,fill=angiographic_disease))+
   geom_text(data=percentData, aes(y=n,label=ratio), position = position_fill(vjust=0.5))+
     ggtitle("Taux de diagnostic de thrombose coronaire selon le sexe")+
   theme_minimal()
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 
 #Test + == Femme
 #Outcome + == checked
@@ -173,7 +181,7 @@ epi.tests(tb, conf.level = 0.95)
 
 ##### 3) Age
 <br/>
-On remarque aussi que plus l'âge augmente, plus le taux de diagnostic de thrombose coronaire positif semble diminuer Comme vu précédement, on ne prend pas en compte, dans cette remarque, les tranches [20-40] et [70-80] du fait de leur faible effectif.
+On remarque aussi que plus l'âge augmente, plus le taux de diagnostic de thrombose coronaire positif semble diminuer. Comme vu précédement, on ne prend pas en compte, dans cette remarque, les tranches [20-40] et [70-80] du fait de leur faible effectif.
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 percentDataBis <- data %>% group_by(age_class) %>% count(angiographic_disease) %>%
@@ -184,7 +192,11 @@ ggplot(data,aes(x=age_class,fill=angiographic_disease))+
   geom_text(data=percentDataBis, aes(y=n,label=ratio), position = position_fill(vjust=0.5))+
     ggtitle("Taux de diagnostic de thrombose coronaire par tranche d'âge")+
   theme_minimal()
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + == [55,80]
 #Outcome + == checked
 data$age_class_bis = discretize(data$age, method = "fixed", breaks = 3, categories = c(0,55,80))
@@ -197,7 +209,7 @@ epi.tests(tb, conf.level = 0.95)
 
 ##### 4) Fréquence cardiaque maximale
 <br/>
-On peut ici remarquer qu'avoir une fréquence cardiaque haute basse semble être un facteur de risque de thrombose coronaire.
+On peut ici remarquer qu'avoir une fréquence cardiaque maximale haute semble être un facteur de risque de thrombose coronaire.
 <br/>
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
@@ -205,7 +217,11 @@ ggplot(data = data)+
   geom_jitter(aes(x= angiographic_disease, y = max_bpm , color = angiographic_disease))+
   ggtitle("Diagnostic de thrombose coronaire selon la fréquence cardiaque maximale")+
   theme_minimal()
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + == [150,205]
 #Outcome + == checked
 data$max_bpm_bis = discretize(data$max_bpm, method = "fixed", breaks = 3, categories = c(0,150,205))
@@ -226,7 +242,11 @@ ggplot(data = data)+
   ggtitle("Diagnostic de thrombose coronaire selon la fréquence cardiaque de repos")+
   theme_minimal()
 
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + == [120,205]
 #Outcome + == checked
 data$resting_bpm_bis = discretize(data$resting_bpm, method = "fixed", breaks = 3, categories = c(0,120,205))
@@ -247,7 +267,11 @@ ggplot(data = data)+
   ggtitle("Diagnostic de thrombose coronaire selon le taux de cholestérol")+
   theme_minimal()
 
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + == [250,600]
 #Outcome + == checked
 data$chol_bis = discretize(data$chol, method = "fixed", breaks = 3, categories = c(0,250,600))
@@ -277,7 +301,11 @@ ggplot(tmpBis,aes(x=chest_pain.reg,fill=angiographic_disease))+
     ggtitle("Taux de diagnostic de thrombose coronaire selon la présence de douleurs thoraciques")+
   xlab("chest pain")+
   theme_minimal()
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + == symptomatic
 #Outcome + == checked
 tmpBis[,c("chest_pain.reg", "angiographic_disease")] -> df
@@ -288,15 +316,19 @@ epi.tests(tb, conf.level = 0.95)
 
 ##### 8) Thalassémie
 <br/>
-Ici aussi, il semble que le fait d'être atteint d'une thalassémie irreversible semble lié à la présence d'une maladie coronarienne.
+Ici aussi, il semble que le fait d'être atteint d'une thalassémie irreversible soit lié à la présence d'une maladie coronarienne.
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=thalassemia,fill=angiographic_disease))+
   geom_bar()+
   geom_text(aes(label=..count..),stat='count',position=position_stack(vjust = 0.5))+
-  ggtitle("Taux de diagnostic de thrombose coronaire selon l'état de la thalassémie")+
+  ggtitle("Diagnostic de thrombose coronaire selon l'état de la thalassémie")+
   theme_minimal()
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + == fixed defect
 #Outcome + == checked
 tmpBis$thalassemia.reg <- as.character(tmpBis$thalassemia)
@@ -318,7 +350,11 @@ ggplot(data,aes(x=colorised_vessels,fill=angiographic_disease))+
   geom_text(aes(label=..count..),stat='count',position=position_stack(vjust = 0.5))+
   ggtitle("Diagnostic de thrombose coronaire selon le nombre de vaisseaux colorés")+
   theme_minimal()
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + ==  [0-1]
 #Outcome + == checked
 tmpBis$vessels.reg <- as.character(tmpBis$colorised_vessels)
@@ -341,7 +377,11 @@ ggplot(data,aes(x=fbs,fill=angiographic_disease))+
   geom_text(aes(label=..count..),stat='count',position=position_fill(vjust=0.5))+
   ggtitle("Taux de diagnostic de thrombose coronaire selon la glycémie à jeun")+
   theme_minimal()
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + ==  <= 120 mg/dl
 #Outcome + == checked
 tmpBis[,c("fbs", "angiographic_disease")] -> df
@@ -358,9 +398,13 @@ On observe qu'il y a moins de thrombose coronaire chez les patients avec un ECG 
 ggplot(data,aes(x=resting_ecg,fill=angiographic_disease))+
   geom_bar()+
   geom_text(aes(label=..count..),stat='count',position=position_stack(vjust = 0.5))+
-  ggtitle("Taux de diagnostic de thrombose coronaire selon l'ECG de repos")+
+  ggtitle("Diagnostic de thrombose coronaire selon l'ECG de repos")+
   theme_minimal()
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + ==  <= anormal
 #Outcome + == checked
 tmpBis$ecg.reg <- as.character(tmpBis$resting_ecg)
@@ -374,8 +418,8 @@ epi.tests(tb, conf.level = 0.95)
 
 ##### 12) Angine induite à l'effort
 <br/>
-Il semblerait que les patients atteints de thrombose coronaire aient moins de douleure angineuse à l'effort.
-Ce résultat semble contre-intuitif, mais il pourrait permettre de faire un diagnostic différentiel avec une d'autres maladies cardiovasculaires.
+Il semblerait que les patients atteints de thrombose coronaire aient moins de douleurs angineuses à l'effort.
+Ce résultat semble contre-intuitif, mais il pourrait permettre de faire un diagnostic différentiel avec d'autres maladies cardiovasculaires.
 <br/>
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
@@ -384,7 +428,11 @@ ggplot(data,aes(x=ex_angina,fill=angiographic_disease))+
   geom_text(aes(label=..count..),stat='count',position=position_fill(vjust = 0.5))+
   ggtitle("Taux de diagnostic de thrombose coronaire selon l'angine d'effort")+
   theme_minimal()
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + ==  <= FALSE
 #Outcome + == checked
 tmpBis$ex_angina.reg <- as.factor(data$ex_angina)
@@ -405,7 +453,11 @@ ggplot(data = data)+
   ggtitle("Diagnostic de thrombose coronaire selon la dépression du segement ST")+
   theme_minimal()
 
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + == [2-6.5]
 #Outcome + == checked
 tmpBis$st_dep_bis = discretize(data$st_depression, method = "fixed", breaks = 3, categories = c(0,2,6.5))
@@ -418,7 +470,7 @@ epi.tests(tb, conf.level = 0.95)
 
 ##### 14) Pente du segement ST lors de l'effort
 <br/>
-Il semblerai qu'avoir une pente de son segment ST lors d'un effort (qu'elle soit positive ou négative) semble être associé avec une thrombose coronaire.
+Il semblerai qu'avoir une pente de son segment ST lors d'un effort (qu'elle soit positive ou négative) soit associé avec une thrombose coronaire.
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=slope,fill=angiographic_disease))+
@@ -426,7 +478,11 @@ ggplot(data,aes(x=slope,fill=angiographic_disease))+
   geom_text(aes(label=..count..),stat='count',position=position_stack(vjust = 0.5))+
   ggtitle("Diagnostic de thrombose coronaire selon la pente du ST")+
   theme_minimal()
-
+```
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 #Test + == fixed defect
 #Outcome + == checked
 tmpBis$slope.reg <-as.character(data$slope)
@@ -437,13 +493,13 @@ Rev(table(df)) -> tb
 tb
 epi.tests(tb, conf.level = 0.95)
 ```
+
 #### B) Premiers pas vers un questionnaire diagnostic
 
 <br/>
 On retire certaines variables qui n'ont à priori que très peu d'interêt selon nos observations précédentes, afin d'alléger la visualisation. Ainsi on retire le cholestérol, la glycémie à jeun et le fréquence cardiaque au repos.
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
-# tmpBis[,c("sex", "fbs", "age_class_bis", "max_bpm_bis", "resting_bpm_bis", "chol_bis", "chest_pain.reg", "thalassemia.reg", "vessels.reg", "angiographic_disease")] -> finalTab
 tmpBis$age <- NULL
 tmpBis$chest_pain <- NULL
 tmpBis$resting_bpm <- NULL
@@ -501,33 +557,59 @@ while (j <= ncol(tmpBis)){
 <br/>
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
-
-
 res.pca <- PCA(finalTab, graph = FALSE)
-print(res.pca)
-ind <- get_pca_ind(res.pca)
-ind
 fviz_pca_biplot (res.pca, col.ind = "contrib",
              geom = c("point", "text"),
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              repel = TRUE # Avoid text overlapping (slow if many points)
              )
 ```
+
 #### C) Applicable tout de suite à la clinique
 <br/>
-Il semblerai donc qu'en demandant au patient de faire une épreuve de test on puisse déjà avoir une bonne idée de la présence ou non de thrombose coronaire.
+Il semblerait donc qu'en demandant au patient de faire une épreuve de test on puisse déjà avoir une bonne idée de la présence ou non de thrombose coronaire.
 On considère qu'il est à risque si sa dépression du segment ST est comprise  entre 0 et 2, qu'il n'a pas de douleur angineuse à l'effort mais qu'il à une douleur thoracique symptomatique au repos.
 <br/>
+
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 
 
 ggplot(data, aes(x = ex_angina, y = st_depression, color = tmpBis$chest_pain)) +
+  ggtitle("Visualisation du test proposé")+
+  labs(color='Chest pain') +
   geom_point() +
   geom_jitter()+
   facet_grid(~angiographic_disease)
+```
 
-data %>% filter(ex_angina == FALSE & st_depression <= 2 & tmpBis$chest_pain == "symptomatic") -> oui
-data %>% filter(ex_angina == TRUE | st_depression > 2 | tmpBis$chest_pain == "asymptomatic") -> non
+<br/>
+On retient au final 5 critères:<br/>
+- thalassemie           (average)<br/>
+- chest pain            (average)<br/>
+- colorisses vessels    (sensible)<br/>
+- ex_angina             (sensible)<br/>
+- st_depression         (sensible)<br/>
+<br/>
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+
+sensi <- function(a, b, c){
+  score <- 0
+  if (a == TRUE){
+    score <- score + 1
+  }
+  if (b <= 2){
+    score <- score + 1
+  }
+  if (c =="0" | c == "1"){
+    score <- score + 1
+  }
+  score
+}
+
+
+data %>% filter(sensi(ex_angina, st_depression, colorised_vessels) >= 1 & (tmpBis$chest_pain == "symptomatic" | thalassemia == "fixed defect")) -> oui
+data %>% filter(sensi(ex_angina, st_depression, colorised_vessels) < 1 | (tmpBis$chest_pain == "asymptomatic" & thalassemia != "fixed defect")) -> non
 
 oui %>% filter(angiographic_disease == TRUE) %>% nrow() -> test_plus_disease_plus
 oui %>% filter(angiographic_disease == FALSE) %>% nrow() -> test_plus_disease_minus
@@ -535,7 +617,7 @@ non %>% filter(angiographic_disease == TRUE) %>% nrow() -> test_minus_disease_pl
 non %>% filter(angiographic_disease == FALSE) %>% nrow() -> test_minus_disease_minus
 
 contingence <- data_frame(disease_plus=c(test_plus_disease_plus, test_minus_disease_plus), disease_minus=c(test_plus_disease_minus, test_minus_disease_minus))
-contingence
+
 epi.tests(as.matrix(contingence), conf.level = 0.95)
 
 ```
