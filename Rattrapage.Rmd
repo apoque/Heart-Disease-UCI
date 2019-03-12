@@ -167,6 +167,12 @@ ggplot(data,aes(x=sex,fill=angiographic_disease))+
   theme_minimal()
 ```
 <br/>
+Rappel statistique:<br/>
+- La sensibilité d’un test est la probabilité que le test soit positif si la personne est atteinte de la maladie.<br/>
+- La spécificité d’un test est la probabilité que le test soit négatif si la personne testée est indemne de la maladie.<br/>
+- La valeur prédictive positive (VPP) d’un test est la probabilité que la personne soit réellement malade si son test est positif.<br/>
+- La valeur prédictive négative (VPN) d’un test est la probabilité que la personne n’ait pas la maladie si son test est négatif.<br/>
+<br/>
 Tableau de contingence et valeurs statistiques:
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
@@ -470,7 +476,7 @@ epi.tests(tb, conf.level = 0.95)
 
 ##### 14) Pente du segement ST lors de l'effort
 <br/>
-Il semblerai qu'avoir une pente de son segment ST lors d'un effort (qu'elle soit positive ou négative) soit associé avec une thrombose coronaire.
+Il semblerai qu'avoir une pente descendante du segment ST lors d'un effort soit associé avec une thrombose coronaire.
 <br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(data,aes(x=slope,fill=angiographic_disease))+
@@ -486,10 +492,10 @@ Tableau de contingence et valeurs statistiques:
 #Test + == fixed defect
 #Outcome + == checked
 tmpBis$slope.reg <-as.character(data$slope)
-tmpBis$slope.reg[tmpBis$slope.reg %in% c("upsloping", "downsloping")] <- "inclined"
+tmpBis$slope.reg[tmpBis$slope.reg %in% c("upsloping", "flat")] <- "flat or upsloping"
 
 tmpBis[,c("slope.reg", "angiographic_disease")] -> df
-Rev(table(df)) -> tb
+Rev(table(df), margin = 2) -> tb
 tb
 epi.tests(tb, conf.level = 0.95)
 ```
@@ -572,27 +578,18 @@ On considère qu'il est à risque si sa dépression du segment ST est comprise  
 <br/>
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
-
-
 ggplot(data, aes(x = ex_angina, y = st_depression, color = tmpBis$chest_pain)) +
   ggtitle("Visualisation du test proposé")+
   labs(color='Chest pain') +
   geom_point() +
   geom_jitter()+
   facet_grid(~angiographic_disease)
+
 ```
-
 <br/>
-On retient au final 5 critères:<br/>
-- thalassemie           (average)<br/>
-- chest pain            (average)<br/>
-- colorisses vessels    (sensible)<br/>
-- ex_angina             (sensible)<br/>
-- st_depression         (sensible)<br/>
+Tableau de contingence et valeurs statistiques:
 <br/>
-
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
-
 sensi <- function(a, b, c){
   score <- 0
   if (a == TRUE){
@@ -608,6 +605,31 @@ sensi <- function(a, b, c){
 }
 
 
+data %>% filter(st_depression <= 2 & ex_angina == FALSE & tmpBis$chest_pain == "symptomatic") -> oui
+data %>% filter(st_depression > 2 | ex_angina == TRUE | tmpBis$chest_pain == "asymptomatic") -> non
+
+oui %>% filter(angiographic_disease == TRUE) %>% nrow() -> test_plus_disease_plus
+oui %>% filter(angiographic_disease == FALSE) %>% nrow() -> test_plus_disease_minus
+non %>% filter(angiographic_disease == TRUE) %>% nrow() -> test_minus_disease_plus
+non %>% filter(angiographic_disease == FALSE) %>% nrow() -> test_minus_disease_minus
+
+contingence <- data_frame(disease_plus=c(test_plus_disease_plus, test_minus_disease_plus), disease_minus=c(test_plus_disease_minus, test_minus_disease_minus))
+
+epi.tests(as.matrix(contingence), conf.level = 0.95)
+
+```
+
+<br/>
+On peut aussi chercher à faire un test diagnostic plus sensible.<br/>
+On retient au final 5 critères:<br/>
+- thalassemie           (average)<br/>
+- chest pain            (average)<br/>
+- colorisses vessels    (sensible)<br/>
+- ex_angina             (sensible)<br/>
+- st_depression         (sensible)<br/>
+<br/>
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 data %>% filter(sensi(ex_angina, st_depression, colorised_vessels) >= 1 & (tmpBis$chest_pain == "symptomatic" | thalassemia == "fixed defect")) -> oui
 data %>% filter(sensi(ex_angina, st_depression, colorised_vessels) < 1 | (tmpBis$chest_pain == "asymptomatic" & thalassemia != "fixed defect")) -> non
 
@@ -619,7 +641,6 @@ non %>% filter(angiographic_disease == FALSE) %>% nrow() -> test_minus_disease_m
 contingence <- data_frame(disease_plus=c(test_plus_disease_plus, test_minus_disease_plus), disease_minus=c(test_plus_disease_minus, test_minus_disease_minus))
 
 epi.tests(as.matrix(contingence), conf.level = 0.95)
-
 ```
 
 <!-- Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*. -->
