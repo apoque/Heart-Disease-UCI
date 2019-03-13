@@ -1,5 +1,5 @@
 ---
-title: "Analyse et exploration de données de maladies cardiaques"
+title: "Analyse et exploration d'un jeu de données sur la thrombose coronaire"
 output:
   html_document:
     df_print: paged
@@ -144,6 +144,7 @@ Nous essayons par cette estimation des corrélations entre variables d'avoir une
 À l'inverse, le nombre de vaisseaux colorés, les douleurs thoraciques, les angines induites à l'effort ou encore la dépression du ST semblent avoir une bonne valeur prédictive du diagnostic de thrombose coronaire.
 <br/>
 Par la suite, nous nous pencherons tour à tour sur chaque variables afin de voir dans quelle mesure elle possède, ou non, un interêt dans le diagnostic de thrombose coronaire.
+<br/>
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 cor(tmp, method = c("pearson", "kendall", "spearman")) %>% 
@@ -500,7 +501,7 @@ tb
 epi.tests(tb, conf.level = 0.95)
 ```
 
-#### B) Premiers pas vers un questionnaire diagnostic
+#### B) Premiers pas vers un questionnaire/test diagnostic
 
 <br/>
 On retire certaines variables qui n'ont à priori que très peu d'interêt selon nos observations précédentes, afin d'alléger la visualisation. Ainsi on retire le cholestérol, la glycémie à jeun et le fréquence cardiaque au repos.
@@ -572,18 +573,23 @@ fviz_pca_biplot (res.pca, col.ind = "contrib",
 ```
 
 #### C) Applicable tout de suite à la clinique
+##### 1) Les 3 variables les plus proches
 <br/>
-Il semblerait donc qu'en demandant au patient de faire une épreuve de test on puisse déjà avoir une bonne idée de la présence ou non de thrombose coronaire.
-On considère qu'il est à risque si sa dépression du segment ST est comprise  entre 0 et 2, qu'il n'a pas de douleur angineuse à l'effort mais qu'il à une douleur thoracique symptomatique au repos.
+On sélectionne les 3 variables les plus proches du point "malade".
 <br/>
-
+Ainsi, on considère qu'il est à risque si sa dépression du segment ST est comprise  entre 0 et 2, qu'il n'a pas de douleur angineuse à l'effort et que son nombre de vaisseaux prenant le contraste soit compris entre 0 et 1.
+<br/>
+Mais l'injection de produit de contraste est un geste invasif et ne sera probablement pas accépté en tant qu'examen de routine.
+<br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
-ggplot(data, aes(x = ex_angina, y = st_depression, color = tmpBis$chest_pain)) +
+ggplot(data, aes(x = ex_angina, y = st_depression, color = tmpBis$vessels)) +
   ggtitle("Visualisation du test proposé")+
-  labs(color='Chest pain') +
+  labs(color='Colorised vessels') +
+  scale_color_manual(values=c("#E69F00", "#009E73"))+
   geom_point() +
   geom_jitter()+
-  facet_grid(~angiographic_disease)
+  facet_grid(~angiographic_disease)+
+  theme_minimal()
 
 ```
 <br/>
@@ -605,6 +611,42 @@ sensi <- function(a, b, c){
 }
 
 
+data %>% filter(st_depression <= 2 & ex_angina == FALSE & tmpBis$vessels == "[0-1]") -> oui
+data %>% filter(st_depression > 2 | ex_angina == TRUE | tmpBis$chest_pain == "[2-4]") -> non
+
+oui %>% filter(angiographic_disease == TRUE) %>% nrow() -> test_plus_disease_plus
+oui %>% filter(angiographic_disease == FALSE) %>% nrow() -> test_plus_disease_minus
+non %>% filter(angiographic_disease == TRUE) %>% nrow() -> test_minus_disease_plus
+non %>% filter(angiographic_disease == FALSE) %>% nrow() -> test_minus_disease_minus
+
+contingence <- data_frame(disease_plus=c(test_plus_disease_plus, test_minus_disease_plus), disease_minus=c(test_plus_disease_minus, test_minus_disease_minus))
+
+epi.tests(as.matrix(contingence), conf.level = 0.95)
+
+```
+
+##### 2) Test d'effort
+<br/>
+Il semble aussi qu'en demandant au patient de faire une épreuve d'effort on puisse tout de même avoir une bonne idée de la présence ou non de thrombose coronaire.
+<br/>
+On considère qu'il est à risque si sa dépression, à l'effort, du segment ST est comprise  entre 0 et 2, qu'il n'a pas de douleur angineuse à l'effort mais qu'il a une douleur thoracique symptomatique au repos.
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+ggplot(data, aes(x = ex_angina, y = st_depression, color = tmpBis$chest_pain)) +
+  ggtitle("Visualisation du test proposé")+
+  labs(color='Chest pain') +
+  scale_color_manual(values=c("#CC79A7", "#0072B2"))+
+  geom_point() +
+  geom_jitter()+
+  facet_grid(~angiographic_disease)+
+  theme_minimal()
+
+```
+
+<br/>
+Tableau de contingence et valeurs statistiques:
+<br/>
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 data %>% filter(st_depression <= 2 & ex_angina == FALSE & tmpBis$chest_pain == "symptomatic") -> oui
 data %>% filter(st_depression > 2 | ex_angina == TRUE | tmpBis$chest_pain == "asymptomatic") -> non
 
@@ -619,8 +661,9 @@ epi.tests(as.matrix(contingence), conf.level = 0.95)
 
 ```
 
+##### 3) Test sensible
 <br/>
-On peut aussi chercher à faire un test diagnostic plus sensible.<br/>
+On peut enfin chercher à faire un test diagnostic plus sensible.<br/>
 On retient au final 5 critères:<br/>
 - thalassemie           (average)<br/>
 - chest pain            (average)<br/>
@@ -628,7 +671,8 @@ On retient au final 5 critères:<br/>
 - ex_angina             (sensible)<br/>
 - st_depression         (sensible)<br/>
 <br/>
-
+Il serait possible d'utiliser ce test afin de sélectionner un maximum de patient, quitte à avoir certains "faux positifs", qu'on éliminerait par la suite avec un dosage des troponines sanguines, excellent marqueur biologique du dommage myocardique.
+<br/>
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 data %>% filter(sensi(ex_angina, st_depression, colorised_vessels) >= 1 & (tmpBis$chest_pain == "symptomatic" | thalassemia == "fixed defect")) -> oui
 data %>% filter(sensi(ex_angina, st_depression, colorised_vessels) < 1 | (tmpBis$chest_pain == "asymptomatic" & thalassemia != "fixed defect")) -> non
